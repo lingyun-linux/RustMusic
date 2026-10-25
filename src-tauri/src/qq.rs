@@ -415,7 +415,11 @@ pub fn song_url(
 ) -> Result<(String, String, &'static str), String> {
     // 前缀：M500=128k M800=320k F000=flac；无 media_mid 时按官方规则用 songmid 拼接
     let ladder: Vec<(&str, &str, &'static str)> = match quality {
-        "lossless" => vec![("F000", "flac", "无损"), ("M800", "mp3", "HQ"), ("M500", "mp3", "标准")],
+        "lossless" => vec![
+            ("F000", "flac", "无损"),
+            ("M800", "mp3", "HQ"),
+            ("M500", "mp3", "标准"),
+        ],
         "standard" => vec![("M500", "mp3", "标准")],
         _ => vec![("M800", "mp3", "HQ"), ("M500", "mp3", "标准")],
     };
@@ -1413,7 +1417,8 @@ mod tests {
         println!(
             "lyric[{}] {:?}",
             any.id,
-            lrc.as_ref().map(|t| t.lrc.chars().take(50).collect::<String>())
+            lrc.as_ref()
+                .map(|t| t.lrc.chars().take(50).collect::<String>())
         );
     }
 
@@ -1445,11 +1450,9 @@ mod tests {
 #[ignore]
 fn test_song_url_lossless_audit() {
     let db_path = std::env::var("APPDATA").unwrap() + r"\com.rustmusic.app\library.db";
-    let conn = rusqlite::Connection::open_with_flags(
-        &db_path,
-        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
-    )
-    .expect("打开应用数据库失败");
+    let conn =
+        rusqlite::Connection::open_with_flags(&db_path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+            .expect("打开应用数据库失败");
     let get = |k: &str| -> String {
         conn.query_row("SELECT value FROM settings WHERE key = ?1", [k], |r| {
             r.get::<_, String>(0)
@@ -1458,15 +1461,21 @@ fn test_song_url_lossless_audit() {
     };
     let songs = search("风的来信", 1, 1).expect("search failed");
     // 免费歌（非 VIP）走 320 档，VIP 歌在无权益时应明确报错——两种都验证
-    let s = songs
-        .iter()
-        .find(|s| !s.vip)
-        .expect("搜索结果无免费歌曲");
+    let s = songs.iter().find(|s| !s.vip).expect("搜索结果无免费歌曲");
     let songmid = &s.id;
     let media_mid = &s.media_mid;
     println!("试听: {} - {}", s.singer, s.name);
-    let (url, ext, label) =
-        song_url(songmid, media_mid, &get("qq_musicid"), &get("qq_musickey"), "lossless", s.vip)
-            .expect("song_url failed");
-    println!("✓ QQ lossless 实际下发: {label} .{ext} url={}", &url[..url.len().min(80)]);
+    let (url, ext, label) = song_url(
+        songmid,
+        media_mid,
+        &get("qq_musicid"),
+        &get("qq_musickey"),
+        "lossless",
+        s.vip,
+    )
+    .expect("song_url failed");
+    println!(
+        "✓ QQ lossless 实际下发: {label} .{ext} url={}",
+        &url[..url.len().min(80)]
+    );
 }

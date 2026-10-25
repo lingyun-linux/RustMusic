@@ -357,11 +357,18 @@ export const api = {
     invoke<{ bytes: number; files: number }>("cache_stats"),
   setCacheLimit: (bytes: number) =>
     invoke<void>("set_cache_limit", { bytes }),
-  getAppInfo: () => invoke<{ version: string; dataDir: string }>("get_app_info"),
+  getAppInfo: () =>
+    invoke<{ version: string; dataDir: string; platform: string }>(
+      "get_app_info",
+    ),
   desktopLyricsOpen: () => invoke<void>("desktop_lyrics_open"),
   desktopLyricsClose: () => invoke<void>("desktop_lyrics_close"),
   desktopLyricsUnlock: () => invoke<void>("desktop_lyrics_unlock"),
   desktopLyricsIsOpen: () => invoke<boolean>("desktop_lyrics_is_open"),
+  /** 远程封面经后端下载落盘（绕开 WebKit 系统代理依赖），返回本地路径 */
+  fetchCover: (url: string) => invoke<string>("fetch_cover", { url }),
+  desktopLyricsSetAlwaysTop: (on: boolean) =>
+    invoke<void>("desktop_lyrics_set_always_top", { on }),
 };
 
 export { convertFileSrc };

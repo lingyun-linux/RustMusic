@@ -49,8 +49,7 @@ pub(crate) fn qq_credential(state: &State<AppState>) -> Result<(String, String),
 
 #[tauri::command]
 pub async fn qq_search(keyword: String, page: Option<i64>) -> Result<serde_json::Value, String> {
-    let songs =
-        super::blocking(move || crate::qq::search(&keyword, 30, page.unwrap_or(1))).await?;
+    let songs = super::blocking(move || crate::qq::search(&keyword, 30, page.unwrap_or(1))).await?;
     Ok(json!({ "songs": songs }))
 }
 
@@ -80,7 +79,13 @@ fn qq_play_task(app: &AppHandle, track: QqPlayReq) -> Result<(), String> {
         track.vip,
     )?;
     if quality == "lossless" && !ext.eq_ignore_ascii_case("flac") {
-        notify_quality_fallback(app, "QQ 音乐", &quality, quality_label, "账号权益未含无损或该曲无 flac");
+        notify_quality_fallback(
+            app,
+            "QQ 音乐",
+            &quality,
+            quality_label,
+            "账号权益未含无损或该曲无 flac",
+        );
     }
     if quality_setting == "hires" {
         // 选了 Hi-Res 但 QQ 未接入 Hi-Res 文件档：明确告知按无损取
@@ -238,7 +243,10 @@ pub async fn qq_toplists() -> Result<serde_json::Value, String> {
 }
 
 #[tauri::command]
-pub async fn qq_toplist_tracks(top_id: i64, page: Option<i64>) -> Result<serde_json::Value, String> {
+pub async fn qq_toplist_tracks(
+    top_id: i64,
+    page: Option<i64>,
+) -> Result<serde_json::Value, String> {
     let page = page.unwrap_or(1).max(1);
     let songs = super::blocking(move || crate::qq::toplist_tracks(top_id, page)).await?;
     Ok(json!({ "songs": songs, "hasMore": songs.len() as i64 >= 100 }))

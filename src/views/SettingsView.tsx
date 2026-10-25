@@ -111,6 +111,11 @@ export default function SettingsView() {
   const [customHex, setCustomHex] = useState(loadCustomAccentHex);
   // 关于与更新
   const [appVersion, setAppVersion] = useState("");
+  // 运行平台：先用 UA 即时判定（避免界面闪烁），后端 get_app_info 到达后校正。
+  // WASAPI 独占等平台专属 UI 由此显隐；Windows 上恒为 "windows"，行为不变
+  const [platform, setPlatform] = useState(() =>
+    /windows/i.test(navigator.userAgent) ? "windows" : "other",
+  );
   const [checkingUpdate, setCheckingUpdate] = useState(false);
 
   const refreshDevices = async () => {
@@ -150,7 +155,13 @@ export default function SettingsView() {
       })
       .catch(() => {}); // 失败静默为空，不能变成未处理 rejection
     refreshDevices();
-    api.getAppInfo().then((i) => setAppVersion(i.version)).catch(() => {});
+    api
+      .getAppInfo()
+      .then((i) => {
+        setAppVersion(i.version);
+        if (i.platform) setPlatform(i.platform);
+      })
+      .catch(() => {});
     useStore.getState().refreshCacheBytes();
     // 设备热插拔（插入耳机等）后端自动切换时同步 UI
     let unbind: (() => void) | undefined;
@@ -575,30 +586,34 @@ export default function SettingsView() {
           <p className="text-[11.5px] text-[var(--ink-3)] mt-2">
             跟随系统默认时，插入耳机等设备热插拔会自动切换并从当前进度续播；固定设备则始终使用所选设备。
           </p>
-          <div className="flex items-center gap-4 mt-4">
-            <span className="text-[12.5px] text-[var(--ink-2)] w-[80px]">独占模式</span>
-            <button
-              className={`relative w-10 h-[22px] rounded-full transition-colors ${
-                wasapiExclusive ? "bg-[var(--accent)]" : "bg-[var(--shade-strong)]"
-              }`}
-              onClick={() => setWasapiExclusive(!wasapiExclusive)}
-              title={wasapiExclusive ? "关闭 WASAPI 独占模式" : "开启 WASAPI 独占模式"}
-            >
-              <span
-                className={`absolute top-[3px] w-4 h-4 rounded-full bg-white shadow transition-all ${
-                  wasapiExclusive ? "left-[21px]" : "left-[3px]"
-                }`}
-              />
-            </button>
-            <span className="text-[11.5px] text-[var(--ink-3)]">
-              绕过系统混音器直连声卡（WASAPI Exclusive）
-            </span>
-          </div>
-          <p className="text-[11.5px] text-[var(--ink-3)] mt-2 leading-relaxed">
-            WASAPI
-            独占模式下，应用将独占声卡、绕过 Windows
-            音量混音器：采样率按源文件直通输出，不经系统重采样与音效处理，尽可能保留原始音质。注意：独占播放期间其它应用将暂时无法发声；独占需要声卡驱动支持，蓝牙/网络音箱等设备驱动不支持独占，若当前设备不支持或系统禁用了独占授权，该曲目会自动回退普通模式播放（以提示说明原因）；均衡器与音量在独占模式下仍有效；开启后下一首生效，关闭则立即切回普通模式（从当前进度继续播放，其它应用恢复出声）。
-          </p>
+          {platform === "windows" && (
+            <>
+              <div className="flex items-center gap-4 mt-4">
+                <span className="text-[12.5px] text-[var(--ink-2)] w-[80px]">独占模式</span>
+                <button
+                  className={`relative w-10 h-[22px] rounded-full transition-colors ${
+                    wasapiExclusive ? "bg-[var(--accent)]" : "bg-[var(--shade-strong)]"
+                  }`}
+                  onClick={() => setWasapiExclusive(!wasapiExclusive)}
+                  title={wasapiExclusive ? "关闭 WASAPI 独占模式" : "开启 WASAPI 独占模式"}
+                >
+                  <span
+                    className={`absolute top-[3px] w-4 h-4 rounded-full bg-white shadow transition-all ${
+                      wasapiExclusive ? "left-[21px]" : "left-[3px]"
+                    }`}
+                  />
+                </button>
+                <span className="text-[11.5px] text-[var(--ink-3)]">
+                  绕过系统混音器直连声卡（WASAPI Exclusive）
+                </span>
+              </div>
+              <p className="text-[11.5px] text-[var(--ink-3)] mt-2 leading-relaxed">
+                WASAPI
+                独占模式下，应用将独占声卡、绕过 Windows
+                音量混音器：采样率按源文件直通输出，不经系统重采样与音效处理，尽可能保留原始音质。注意：独占播放期间其它应用将暂时无法发声；独占需要声卡驱动支持，蓝牙/网络音箱等设备驱动不支持独占，若当前设备不支持或系统禁用了独占授权，该曲目会自动回退普通模式播放（以提示说明原因）；均衡器与音量在独占模式下仍有效；开启后下一首生效，关闭则立即切回普通模式（从当前进度继续播放，其它应用恢复出声）。
+              </p>
+            </>
+          )}
         </section>
 
         {/* 下载目录 */}
@@ -727,7 +742,7 @@ export default function SettingsView() {
 
         <div className="text-[11.5px] text-[var(--ink-3)] px-1 pb-2">
           RustMusic {appVersion ? `v${appVersion}` : ""} · Rust + Tauri 2 + React ·
-          引擎 rodio / symphonia · 界面仅支持 Windows（架构上保留跨平台能力）
+          引擎 rodio / symphonia · 界面支持 Windows / Linux（WASAPI 独占输出仅 Windows）
         </div>
       </div>
     </div>
